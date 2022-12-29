@@ -1,6 +1,3 @@
-#![feature(test)]
-extern crate test;
-
 use nom::{combinator::all_consuming, Finish};
 use parse::{Name, NameMap, Valve};
 
@@ -23,7 +20,8 @@ impl Network {
         let mut net = Self {
             valves: Default::default(),
         };
-        let input = include_str!("input.txt");
+        // let input = include_str!("input.txt");
+        let input = include_str!("input-sample.txt");
 
         for valve in input
             .lines()
@@ -102,7 +100,7 @@ impl Move<'_> {
 const NUM_ACTORS: usize = 1;
 
 #[derive(Clone)]
-struct State<'net> {
+pub struct State<'net> {
     net: &'net Network,
     max_turns: u64,
     turn: u64,
@@ -186,7 +184,7 @@ impl<'net> State<'net> {
         true
     }
 
-    fn run_manual<'borrow>(&'borrow self) -> State<'net> {
+    pub fn run_manual<'borrow>(&'borrow self) -> State<'net> {
         let mut state = self.clone();
         if !state.step() {
             // all done
@@ -236,7 +234,7 @@ impl<'net> State<'net> {
         }
     }
 
-    fn run_max_by_key<'borrow>(&'borrow self) -> State<'net> {
+    pub fn run_max_by_key<'borrow>(&'borrow self) -> State<'net> {
         let mut state = self.clone();
         if !state.step() {
             // all done
@@ -268,11 +266,7 @@ impl<'net> State<'net> {
     }
 }
 
-fn main() {
-    panic!("Run 'cargo bench' instead!");
-}
-
-fn with_state(net: &Network, f: impl FnOnce(State)) {
+pub fn with_state(net: &Network, f: impl FnOnce(State)) {
     f(State {
         net,
         max_turns: 30,
@@ -287,30 +281,4 @@ fn with_state(net: &Network, f: impl FnOnce(State)) {
             position: Name(*b"AA"),
         }],
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use test::Bencher;
-
-    #[bench]
-    fn bench_manual(b: &mut Bencher) {
-        let net = Network::new();
-        b.iter(|| {
-            with_state(&net, |state| {
-                std::hint::black_box(state.run_manual());
-            })
-        })
-    }
-
-    #[bench]
-    fn bench_max_by_key(b: &mut Bencher) {
-        let net = Network::new();
-        b.iter(|| {
-            with_state(&net, |state| {
-                std::hint::black_box(state.run_max_by_key());
-            })
-        })
-    }
 }
