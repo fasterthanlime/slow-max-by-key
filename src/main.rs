@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 use nom::{combinator::all_consuming, Finish};
 use parse::{Name, NameMap, Valve};
 
@@ -183,7 +186,7 @@ impl<'net> State<'net> {
         true
     }
 
-    fn run<'borrow>(&'borrow self) -> State<'net> {
+    fn run_manual<'borrow>(&'borrow self) -> State<'net> {
         let mut state = self.clone();
         if !state.step() {
             // all done
@@ -204,7 +207,6 @@ impl<'net> State<'net> {
         };
 
         // find best move
-        #[cfg(not(feature = "max_by_key"))]
         {
             let mut best_state: Option<State<'net>> = None;
 
@@ -214,7 +216,7 @@ impl<'net> State<'net> {
                 actor.in_progress_move = Some(mv);
                 actor.step(next.net, &mut next.inner);
 
-                let end_state: State<'net> = next.run();
+                let end_state: State<'net> = next.run_manual();
                 if end_state.pressure > best_state.as_ref().map(|s| s.pressure).unwrap_or_default()
                 {
                     best_state = Some(end_state);
@@ -228,30 +230,51 @@ impl<'net> State<'net> {
                 }
                 None => {
                     // no moves possible, just wait it out
-                    state.run()
+                    state.run_manual()
                 }
             }
         }
+    }
 
-        #[cfg(feature = "max_by_key")]
-        {
-            mvs.map(|mv| {
-                let mut next: State<'net> = state.clone();
-                let actor = &mut next.actors[0];
-                actor.in_progress_move = Some(mv);
-                actor.step(next.net, &mut next.inner);
-                next.run()
-            })
-            .max_by_key(|state| state.pressure)
-            .unwrap_or_else(|| state.run())
+    fn run_max_by_key<'borrow>(&'borrow self) -> State<'net> {
+        let mut state = self.clone();
+        if !state.step() {
+            // all done
+            return state;
         }
+
+        let actor_index = 0;
+
+        let actor = &mut state.actors[actor_index];
+        let mvs = if let Some(mv) = actor.in_progress_move.take() {
+            itertools::Either::Left(std::iter::once(mv))
+        } else {
+            itertools::Either::Right(
+                self.moves(actor.position)
+                    .filter(|mv| mv.cost() <= state.turns_left())
+                    .map(InProgressMove::new),
+            )
+        };
+
+        mvs.map(|mv| {
+            let mut next: State<'net> = state.clone();
+            let actor = &mut next.actors[0];
+            actor.in_progress_move = Some(mv);
+            actor.step(next.net, &mut next.inner);
+            next.run_max_by_key()
+        })
+        .max_by_key(|state| state.pressure)
+        .unwrap_or_else(|| state.run_max_by_key())
     }
 }
 
 fn main() {
-    let net = Network::new();
-    let state = State {
-        net: &net,
+    panic!("Run 'cargo bench' instead!");
+}
+
+fn with_state(net: &Network, f: impl FnOnce(State)) {
+    f(State {
+        net,
         max_turns: 30,
         turn: 0,
         pressure: 0,
@@ -263,8 +286,31 @@ fn main() {
             in_progress_move: None,
             position: Name(*b"AA"),
         }],
-    };
+    })
+}
 
-    let state = state.run();
-    println!("final pressure = {}", state.pressure);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_manual(b: &mut Bencher) {
+        let net = Network::new();
+        b.iter(|| {
+            with_state(&net, |state| {
+                std::hint::black_box(state.run_manual());
+            })
+        })
+    }
+
+    #[bench]
+    fn bench_max_by_key(b: &mut Bencher) {
+        let net = Network::new();
+        b.iter(|| {
+            with_state(&net, |state| {
+                std::hint::black_box(state.run_max_by_key());
+            })
+        })
+    }
 }
