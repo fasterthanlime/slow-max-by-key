@@ -5,8 +5,19 @@ Reproduction to show that a some Rust code gets slower when refactored to use
 
 ## Sample results
 
+(Note that the nightly version is pinned, see `rust-toolchain.toml`)
+
 ```shell
-cargo bench
+$ rustc -vV
+rustc 1.68.0-nightly (270c94e48 2022-12-28)
+binary: rustc
+commit-hash: 270c94e484e19764a2832ef918c95224eb3f17c7
+commit-date: 2022-12-28
+host: x86_64-unknown-linux-gnu
+release: 1.68.0-nightly
+LLVM version: 15.0.6
+
+$ cargo bench
     Finished bench [optimized + debuginfo] target(s) in 0.03s
      Running unittests src/lib.rs (target/release/deps/day16-95df0454694c3cc4)
 
