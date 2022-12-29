@@ -35,13 +35,13 @@ pub const MAX_NAME: usize = 26_usize.pow(2);
 
 #[derive(Clone)]
 pub struct NameMap<T> {
-    values: [Option<T>; MAX_NAME],
+    values: Vec<Option<T>>,
 }
 
 impl<T> NameMap<T> {
     pub fn new() -> Self {
         Self {
-            values: std::array::from_fn(|_| None),
+            values: Vec::from_iter((0..MAX_NAME).map(|_| None)),
         }
     }
 

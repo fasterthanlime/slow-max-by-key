@@ -10,8 +10,6 @@ itertools = "0.10.5"
 nom = "7"
 
 [features]
-quiet = []
-production = []
 max_by_key = []
 
 [profile.release]

@@ -14,27 +14,13 @@ pub struct Network {
 
 pub type Path = Vec<(Name, Name)>;
 
-macro_rules! debugln {
-    ($($arg:tt)*) => (
-        #[cfg(not(feature = "quiet"))]
-        {
-            println!($($arg)*);
-        }
-    )
-}
-
 impl Network {
     #![allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let mut net = Self {
             valves: Default::default(),
         };
-
-        #[cfg(feature = "production")]
         let input = include_str!("input.txt");
-
-        #[cfg(not(feature = "production"))]
-        let input = include_str!("input-sample.txt");
 
         for valve in input
             .lines()
@@ -142,7 +128,6 @@ impl<'net> Actor<'net> {
             let target = im.mv.target;
 
             if im.turns + 1 >= im.mv.cost() {
-                debugln!("Opening {target}");
                 self.in_progress_move = None;
                 self.position = target;
 
@@ -150,8 +135,7 @@ impl<'net> Actor<'net> {
                 state.pressure_per_turn += net.valves.get(target).unwrap().0.flow;
                 self.in_progress_move = None;
             } else {
-                let (from, to) = im.mv.path[im.turns as usize];
-                debugln!("Moving from {from} to {to}");
+                let (_from, to) = im.mv.path[im.turns as usize];
                 self.position = to;
                 im.turns += 1;
             }
@@ -190,16 +174,6 @@ impl<'net> State<'net> {
     }
 
     fn step(&mut self) -> bool {
-        debugln!("== Turn {} ==", self.turn + 1);
-        for (i, actor) in self.actors.iter().enumerate() {
-            debugln!("Actor {i} is at {}", actor.position);
-        }
-
-        debugln!(
-            "Valves {:?} are open, releasing {} pressure",
-            self.inner.open_valves.keys().collect::<Vec<_>>(),
-            self.inner.pressure_per_turn,
-        );
         self.pressure += self.inner.pressure_per_turn;
 
         self.turn += 1;
@@ -250,7 +224,6 @@ impl<'net> State<'net> {
             match best_state {
                 Some(state) => {
                     // we reached the end
-                    debugln!("Reached end from turn {}", self.turn + 1);
                     state
                 }
                 None => {
